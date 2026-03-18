@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Group Quiz</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f5f5f5; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 24px; }
+    .question { background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .question p { font-weight: bold; margin-bottom: 12px; }
+    .options { display: flex; flex-wrap: wrap; gap: 8px; }
+    .options label { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; border: 1px solid #ddd; border-radius: 20px; background: #fafafa; transition: background 0.15s; }
+    .options label:hover { background: #eee; }
+    .options input[type=radio] { accent-color: #333; }
+    .options input[type=radio]:checked + span { font-weight: bold; }
+    .options label:has(input:checked) { background: #333; color: white; border-color: #333; }
+    #submit-btn { display: block; width: 100%; max-width: 400px; margin: 24px auto; padding: 14px; background: #333; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+    #submit-btn:hover { background: #111; }
+    #submit-btn:disabled { background: #999; cursor: default; }
+    #name-section { background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    #name-section p { font-weight: bold; margin-bottom: 12px; }
+    .name-options { display: flex; flex-wrap: wrap; gap: 8px; }
+    .name-options label { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; border: 1px solid #ddd; border-radius: 20px; background: #fafafa; transition: background 0.15s; }
+    .name-options label:hover { background: #eee; }
+    .name-options label:has(input:checked) { background: #333; color: white; border-color: #333; }
+    #msg { text-align: center; margin-top: 16px; font-size: 15px; color: green; }
+    #msg.error { color: red; }
+    .container { max-width: 600px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Group Quiz</h1>
+
+  <div id="name-section">
+    <p>Who are you?</p>
+    <div class="name-options" id="name-options"></div>
+  </div>
+
+  <div id="questions-container"></div>
+
+  <button id="submit-btn" onclick="submitForm()">Submit</button>
+  <div id="msg"></div>
+</div>
+
+<script>
+const MEMBERS = ['Greg', 'Alex', 'Arjun', 'Parth', 'Rohanth'];
+
+const QUESTIONS = [
+  // PLACEHOLDER — replace with real questions
+  "Question 1 placeholder",
+  "Question 2 placeholder",
+  "Question 3 placeholder",
+];
+
+// Render name picker
+const nameOpts = document.getElementById('name-options');
+MEMBERS.forEach(m => {
+  nameOpts.innerHTML += `<label><input type="radio" name="__name" value="${m}"><span>${m}</span></label>`;
+});
+
+// Render questions
+const qContainer = document.getElementById('questions-container');
+QUESTIONS.forEach((q, i) => {
+  let opts = MEMBERS.map(m =>
+    `<label><input type="radio" name="q${i}" value="${m}"><span>${m}</span></label>`
+  ).join('');
+  qContainer.innerHTML += `
+    <div class="question">
+      <p>${i + 1}. ${q}</p>
+      <div class="options">${opts}</div>
+    </div>`;
+});
+
+async function submitForm() {
+  const btn = document.getElementById('submit-btn');
+  const msg = document.getElementById('msg');
+  msg.className = '';
+  msg.textContent = '';
+
+  const submitter = document.querySelector('input[name="__name"]:checked');
+  if (!submitter) { msg.className = 'error'; msg.textContent = 'Please select your name.'; return; }
+
+  const answers = {};
+  for (let i = 0; i < QUESTIONS.length; i++) {
+    const sel = document.querySelector(`input[name="q${i}"]:checked`);
+    if (!sel) { msg.className = 'error'; msg.textContent = `Please answer question ${i + 1}.`; return; }
+    answers[`q${i}`] = sel.value;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  try {
+    const res = await fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: submitter.value, answers })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      msg.textContent = 'Submitted! Thanks.';
+      btn.textContent = 'Submitted';
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch (e) {
+    msg.className = 'error';
+    msg.textContent = 'Error: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+  }
+}
+</script>
+</body>
+</html>

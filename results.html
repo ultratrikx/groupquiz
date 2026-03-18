@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Results</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f5f5f5; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 8px; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 24px; font-size: 14px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .chart-card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .chart-card h2 { margin-bottom: 16px; font-size: 16px; }
+    .chart-wrap { max-width: 300px; margin: 0 auto; }
+    .no-data { text-align: center; color: #999; padding: 40px; }
+    .submissions { background: white; border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 14px; color: #555; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Results</h1>
+  <div class="subtitle" id="subtitle">Loading...</div>
+  <div id="charts"></div>
+</div>
+
+<script>
+const MEMBERS = ['Greg', 'Alex', 'Arjun', 'Parth', 'Rohanth'];
+const COLORS = ['#FF6384','#36A2EB','#FFCE56','#4BC0C0','#9966FF'];
+
+async function load() {
+  const res = await fetch('/api/results');
+  const data = await res.json();
+  const { responses, questions } = data;
+
+  document.getElementById('subtitle').textContent =
+    `${responses.length} of ${MEMBERS.length} submitted`;
+
+  const chartsEl = document.getElementById('charts');
+
+  if (responses.length === 0) {
+    chartsEl.innerHTML = '<div class="no-data">No submissions yet.</div>';
+    return;
+  }
+
+  // Show who submitted
+  const names = responses.map(r => r.name).join(', ');
+  chartsEl.innerHTML = `<div class="submissions">Submitted: ${names}</div>`;
+
+  questions.forEach((q, i) => {
+    // tally votes
+    const tally = {};
+    MEMBERS.forEach(m => tally[m] = 0);
+    responses.forEach(r => {
+      const ans = r.answers[`q${i}`];
+      if (ans && tally[ans] !== undefined) tally[ans]++;
+    });
+
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.innerHTML = `<h2>${i + 1}. ${q}</h2><div class="chart-wrap"><canvas id="chart${i}"></canvas></div>`;
+    chartsEl.appendChild(card);
+
+    new Chart(document.getElementById(`chart${i}`), {
+      type: 'pie',
+      data: {
+        labels: MEMBERS,
+        datasets: [{
+          data: MEMBERS.map(m => tally[m]),
+          backgroundColor: COLORS,
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.label}: ${ctx.raw} vote${ctx.raw !== 1 ? 's' : ''}`
+            }
+          }
+        }
+      }
+    });
+  });
+}
+
+load();
+</script>
+</body>
+</html>
