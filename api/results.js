@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { list } from '@vercel/blob';
 
 const QUESTIONS = [
   "Worst taste in girls",
@@ -65,10 +65,19 @@ const QUESTIONS = [
 ];
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const raw = await kv.hgetall('responses') || {};
-  const responses = Object.values(raw).map(v => JSON.parse(v));
-
-  res.status(200).json({ responses, questions: QUESTIONS });
+  try {
+    const { blobs } = await list({ prefix: 'responses/' });
+    const responses = await Promise.all(
+      blobs.map(async (blob) => {
+        const r = await fetch(blob.url);
+        return r.json();
+      })
+    );
+    res.status(200).json({ responses, questions: QUESTIONS });
+  } catch (err) {
+    console.error('Blob error:', err);
+    res.status(500).json({ error: `Blob error: ${err.message}` });
+  }
 }

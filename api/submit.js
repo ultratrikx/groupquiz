@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { put } from '@vercel/blob';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -9,11 +9,14 @@ export default async function handler(req, res) {
   const entry = { name, answers, ts: Date.now() };
 
   try {
-    // Store by name so re-submissions overwrite
-    await kv.hset('responses', { [name]: JSON.stringify(entry) });
+    await put(`responses/${name}.json`, JSON.stringify(entry), {
+      access: 'public',
+      contentType: 'application/json',
+      addRandomSuffix: false,
+    });
     res.status(200).json({ ok: true });
   } catch (err) {
-    console.error('KV error:', err);
-    res.status(500).json({ error: `KV error: ${err.message}` });
+    console.error('Blob error:', err);
+    res.status(500).json({ error: `Blob error: ${err.message}` });
   }
 }
